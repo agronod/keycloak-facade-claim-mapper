@@ -16,12 +16,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A Keycloak protocol mapper that overrides the token issuer URL when requests 
+ * A Keycloak protocol mapper that overrides the token issuer URL when requests
  * are proxied through an authentication facade.
  * 
- * This mapper detects facade-proxied requests by checking for a specific HTTP header
- * (X-Auth-Facade-Request) and replaces the token's issuer URL with a configured 
- * facade URL. This ensures tokens appear to be issued by the facade rather than 
+ * This mapper detects facade-proxied requests by checking for a specific HTTP
+ * header
+ * (X-Auth-Facade-Request) and replaces the token's issuer URL with a configured
+ * facade URL. This ensures tokens appear to be issued by the facade rather than
  * the underlying Keycloak instance.
  * 
  * Configuration:
@@ -37,7 +38,7 @@ public class FacadeOIDCProtocolMapper extends AbstractOIDCProtocolMapper
     private static final String FACADE_HEADER_NAME = "X-Auth-Facade-Request";
     private static final String FACADE_HEADER_VALUE = "true";
     private static final String CONFIG_FACADE_ISSUER_URL = "facadeIssuerUrl";
-    
+
     private static final Logger logger = Logger.getLogger(FacadeOIDCProtocolMapper.class);
     private static final List<ProviderConfigProperty> configProperties = new ArrayList<>();
 
@@ -50,6 +51,13 @@ public class FacadeOIDCProtocolMapper extends AbstractOIDCProtocolMapper
         property.setType(ProviderConfigProperty.STRING_TYPE);
         property.setDefaultValue("");
         configProperties.add(property);
+    }
+
+    /**
+     * Constructor that logs initialization for debugging.
+     */
+    public FacadeOIDCProtocolMapper() {
+        logger.info("FacadeOIDCProtocolMapper initialized - ready to handle facade issuer overrides");
     }
 
     /**
@@ -111,10 +119,10 @@ public class FacadeOIDCProtocolMapper extends AbstractOIDCProtocolMapper
      * 3. Validate the URL format
      * 4. Override the token issuer if valid
      * 
-     * @param token The access token to transform
-     * @param mappingModel The protocol mapper configuration
-     * @param keycloakSession The current Keycloak session
-     * @param userSession The user session
+     * @param token            The access token to transform
+     * @param mappingModel     The protocol mapper configuration
+     * @param keycloakSession  The current Keycloak session
+     * @param userSession      The user session
      * @param clientSessionCtx The client session context
      * @return The transformed access token
      */
@@ -125,7 +133,7 @@ public class FacadeOIDCProtocolMapper extends AbstractOIDCProtocolMapper
 
         if (isRequestFromFacade(keycloakSession)) {
             String facadeIssuerUrl = mappingModel.getConfig().get(CONFIG_FACADE_ISSUER_URL);
-            
+
             if (isValidFacadeUrl(facadeIssuerUrl)) {
                 String trimmedUrl = facadeIssuerUrl.trim();
                 token.issuer(trimmedUrl);
@@ -134,9 +142,12 @@ public class FacadeOIDCProtocolMapper extends AbstractOIDCProtocolMapper
                 // URL is configured but invalid
                 logger.warn("Invalid facade issuer URL configured: " + facadeIssuerUrl);
             }
+
+            logger.debug("Token issuer set to facade URL: " + token.getIssuer());
+        } else {
+            logger.debug("Request not from facade, using default token issuer: " + token.getIssuer());
         }
 
-        setClaim(token, mappingModel, userSession, keycloakSession, clientSessionCtx);
         return token;
     }
 
@@ -150,7 +161,7 @@ public class FacadeOIDCProtocolMapper extends AbstractOIDCProtocolMapper
         String headerValue = keycloakSession.getContext()
                 .getRequestHeaders()
                 .getHeaderString(FACADE_HEADER_NAME);
-        
+
         return FACADE_HEADER_VALUE.equals(headerValue);
     }
 
@@ -164,7 +175,7 @@ public class FacadeOIDCProtocolMapper extends AbstractOIDCProtocolMapper
         if (url == null || url.trim().isEmpty()) {
             return false;
         }
-        
+
         try {
             // Validate URL format
             new URL(url.trim());
